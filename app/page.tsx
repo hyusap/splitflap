@@ -214,7 +214,7 @@ const IndividualReel = memo(function IndividualReel({
       setNextLetter(next);
 
       const startTime = Date.now();
-      const duration = 400;
+      const duration = 200;
 
       const animate = () => {
         const elapsed = Date.now() - startTime;
@@ -237,21 +237,17 @@ const IndividualReel = memo(function IndividualReel({
           // Continue to next letter
           timeoutId = setTimeout(() => {
             animateStep(next, target);
-          }, 100);
+          }, 50);
         }
       };
 
       animationId = requestAnimationFrame(animate);
     };
 
-    // Start animation with random delay
-    const delay = Math.random() * 2000;
-    const initialTimeout = setTimeout(() => {
-      animateStep(currentLetter, targetLetter);
-    }, delay);
+    // Start animation immediately
+    animateStep(currentLetter, targetLetter);
 
     return () => {
-      clearTimeout(initialTimeout);
       if (animationId) cancelAnimationFrame(animationId);
       if (timeoutId) clearTimeout(timeoutId);
     };
@@ -306,13 +302,20 @@ const IndividualReel = memo(function IndividualReel({
 });
 
 export default function Home() {
+  const message = "HELLO WORLD";
+  
   return (
     <main className="bg-[#181818] h-screen w-screen overflow-hidden flex items-center justify-center">
-      <IndividualReel 
-        id={0} 
-        targetLetter="H"
-        autoStart={true}
-      />
+      <div className="flex gap-x-2">
+        {message.split("").map((letter, i) => (
+          <IndividualReel 
+            key={i}
+            id={i} 
+            targetLetter={letter}
+            autoStart={true}
+          />
+        ))}
+      </div>
     </main>
   );
 }
