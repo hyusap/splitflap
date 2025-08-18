@@ -35,13 +35,17 @@ function SplitFlapHalf({
 
 function AnimatedSplitFlap({
   letter = "A",
-  rotation = -45,
   perspective = 100,
+  completion = 0,
 }: {
   letter: string;
-  rotation?: number;
   perspective?: number;
+  completion?: number;
 }) {
+  const easeInOutCubic = (t: number) => {
+    return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+  };
+
   return (
     <div className="bg-[#0E0E0E] p-2 pb-4 flex flex-col gap-0.5 z-50">
       <div
@@ -52,23 +56,43 @@ function AnimatedSplitFlap({
       >
         {/* Background top half */}
         <div className="absolute">
-          <SplitFlapHalf letter="A" isTop={true} className="bg-[#1A1A1A]" />
+          <SplitFlapHalf letter="B" isTop={true} />
         </div>
 
         {/* Rotating top half */}
         <div
           style={{
-            transform: `rotateX(${rotation}deg)`,
+            transform: `rotateX(${completion <= 50 ? easeInOutCubic(completion / 50) * -88 : -88}deg)`,
             transformOrigin: "bottom",
             transformStyle: "preserve-3d",
+            opacity: completion >= 50 ? 0 : 1,
+            transition: "opacity 0.1s",
           }}
         >
-          <SplitFlapHalf letter={letter} isTop={true} />
+          <SplitFlapHalf letter="A" isTop={true} />
         </div>
       </div>
 
       {/* Bottom half with layered cards behind it */}
-      <div className="relative">
+      <div
+        className="relative"
+        style={{
+          perspective: `${perspective}px`,
+        }}
+      >
+        {/* Rotating down element (bottom side of same card) - starts at 50% */}
+        {completion > 50 && (
+          <div
+            className="absolute z-10"
+            style={{
+              transform: `rotateX(${88 - easeInOutCubic((completion - 50) / 50) * 88}deg)`,
+              transformOrigin: "top",
+              transformStyle: "preserve-3d",
+            }}
+          >
+            <SplitFlapHalf letter="B" isTop={false} />
+          </div>
+        )}
         {/* Background layers - only for bottom half */}
         <div className="absolute top-2">
           <SplitFlapHalf
@@ -94,7 +118,7 @@ function AnimatedSplitFlap({
 
         {/* Main bottom half */}
         <div className="relative">
-          <SplitFlapHalf letter={letter} isTop={false} />
+          <SplitFlapHalf letter="A" isTop={false} />
         </div>
       </div>
     </div>
@@ -141,7 +165,7 @@ function SplitFlapTile({ letter = "A" }: { letter: string }) {
 }
 
 export default function Home() {
-  const [rotation, setRotation] = useState(0);
+  const [completion, setCompletion] = useState(0);
   const [perspective, setPerspective] = useState(100);
 
   return (
@@ -150,30 +174,30 @@ export default function Home() {
         <SplitFlapTile letter="A" />
         <AnimatedSplitFlap
           letter="B"
-          rotation={-rotation}
           perspective={perspective}
+          completion={completion}
         />
       </div>
 
       <div className="flex flex-col gap-4">
         <div className="flex items-center gap-4 bg-[#2A2A2A] p-4 rounded-lg">
           <label
-            htmlFor="rotation-slider"
+            htmlFor="completion-slider"
             className="text-white text-sm font-medium"
           >
-            Rotation:
+            Completion:
           </label>
           <input
-            id="rotation-slider"
+            id="completion-slider"
             type="range"
             min="0"
-            max="180"
+            max="100"
             step="1"
-            value={rotation}
-            onChange={(e) => setRotation(Number(e.target.value))}
+            value={completion}
+            onChange={(e) => setCompletion(Number(e.target.value))}
             className="w-64 h-2 bg-[#444444] rounded-lg appearance-none cursor-pointer"
           />
-          <span className="text-white text-sm min-w-[3rem]">-{rotation}°</span>
+          <span className="text-white text-sm min-w-[3rem]">{completion}%</span>
         </div>
 
         <div className="flex items-center gap-4 bg-[#2A2A2A] p-4 rounded-lg">
