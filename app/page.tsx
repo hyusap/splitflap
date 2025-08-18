@@ -34,11 +34,13 @@ function SplitFlapHalf({
 }
 
 function AnimatedSplitFlap({
-  letter = "A",
+  currentLetter = "A",
+  nextLetter = "B",
   perspective = 100,
   completion = 0,
 }: {
-  letter: string;
+  currentLetter: string;
+  nextLetter: string;
   perspective?: number;
   completion?: number;
 }) {
@@ -56,7 +58,7 @@ function AnimatedSplitFlap({
       >
         {/* Background top half */}
         <div className="absolute">
-          <SplitFlapHalf letter="B" isTop={true} />
+          <SplitFlapHalf letter={completion > 0 ? nextLetter : currentLetter} isTop={true} />
         </div>
 
         {/* Rotating top half */}
@@ -69,7 +71,7 @@ function AnimatedSplitFlap({
             transition: "opacity 0.1s",
           }}
         >
-          <SplitFlapHalf letter="A" isTop={true} />
+          <SplitFlapHalf letter={currentLetter} isTop={true} />
         </div>
       </div>
 
@@ -90,27 +92,27 @@ function AnimatedSplitFlap({
               transformStyle: "preserve-3d",
             }}
           >
-            <SplitFlapHalf letter="B" isTop={false} />
+            <SplitFlapHalf letter={nextLetter} isTop={false} />
           </div>
         )}
         {/* Background layers - only for bottom half */}
         <div className="absolute top-2">
           <SplitFlapHalf
-            letter={letter}
+            letter={currentLetter}
             isTop={false}
             className="bg-[#171717] shadow-none"
           />
         </div>
         <div className="absolute top-1.5">
           <SplitFlapHalf
-            letter={letter}
+            letter={currentLetter}
             isTop={false}
             className="bg-[#1B1B1B]"
           />
         </div>
         <div className="absolute top-1">
           <SplitFlapHalf
-            letter={letter}
+            letter={currentLetter}
             isTop={false}
             className="bg-[#1F1F1F]"
           />
@@ -118,7 +120,7 @@ function AnimatedSplitFlap({
 
         {/* Main bottom half */}
         <div className="relative">
-          <SplitFlapHalf letter="A" isTop={false} />
+          <SplitFlapHalf letter={currentLetter} isTop={false} />
         </div>
       </div>
     </div>
@@ -165,62 +167,81 @@ function SplitFlapTile({ letter = "A" }: { letter: string }) {
 }
 
 export default function Home() {
-  const [completion, setCompletion] = useState(0);
-  const [perspective, setPerspective] = useState(100);
+  const [currentLetter, setCurrentLetter] = useState("A");
+  const [nextLetter, setNextLetter] = useState("B");
+  const [isAnimating, setIsAnimating] = useState(false);
+  const [animationProgress, setAnimationProgress] = useState(0);
+  const [perspective, setPerspective] = useState(1000);
+
+  const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
+
+  const handleClick = () => {
+    if (isAnimating) return; // Prevent clicks during animation
+    
+    setIsAnimating(true);
+    setAnimationProgress(0);
+    
+    // Start animation
+    const startTime = Date.now();
+    const duration = 800; // 800ms animation
+    
+    const animate = () => {
+      const elapsed = Date.now() - startTime;
+      const progress = Math.min(elapsed / duration, 1) * 100;
+      
+      setAnimationProgress(progress);
+      
+      if (progress < 100) {
+        requestAnimationFrame(animate);
+      } else {
+        // Animation complete - update letters first, then reset animation
+        const currentIndex = letters.indexOf(nextLetter);
+        const nextIndex = (currentIndex + 1) % letters.length;
+        
+        setCurrentLetter(nextLetter);
+        setNextLetter(letters[nextIndex]);
+        setAnimationProgress(0);
+        setIsAnimating(false);
+      }
+    };
+    
+    requestAnimationFrame(animate);
+  };
 
   return (
     <main className="bg-[#181818] h-screen w-screen flex flex-col items-center justify-center gap-8">
       <div className="flex items-center justify-center gap-2">
-        <SplitFlapTile letter="A" />
-        <AnimatedSplitFlap
-          letter="B"
-          perspective={perspective}
-          completion={completion}
-        />
+        <SplitFlapTile letter="Z" />
+        <div onClick={handleClick} className="cursor-pointer">
+          <AnimatedSplitFlap
+            currentLetter={currentLetter}
+            nextLetter={nextLetter}
+            perspective={perspective}
+            completion={animationProgress}
+          />
+        </div>
       </div>
 
-      <div className="flex flex-col gap-4">
-        <div className="flex items-center gap-4 bg-[#2A2A2A] p-4 rounded-lg">
-          <label
-            htmlFor="completion-slider"
-            className="text-white text-sm font-medium"
-          >
-            Completion:
-          </label>
-          <input
-            id="completion-slider"
-            type="range"
-            min="0"
-            max="100"
-            step="1"
-            value={completion}
-            onChange={(e) => setCompletion(Number(e.target.value))}
-            className="w-64 h-2 bg-[#444444] rounded-lg appearance-none cursor-pointer"
-          />
-          <span className="text-white text-sm min-w-[3rem]">{completion}%</span>
-        </div>
-
-        <div className="flex items-center gap-4 bg-[#2A2A2A] p-4 rounded-lg">
-          <label
-            htmlFor="perspective-slider"
-            className="text-white text-sm font-medium"
-          >
-            Perspective:
-          </label>
-          <input
-            id="perspective-slider"
-            type="range"
-            min="50"
-            max="2000"
-            step="10"
-            value={perspective}
-            onChange={(e) => setPerspective(Number(e.target.value))}
-            className="w-64 h-2 bg-[#444444] rounded-lg appearance-none cursor-pointer"
-          />
-          <span className="text-white text-sm min-w-[4rem]">
-            {perspective}px
-          </span>
-        </div>
+      <div className="flex items-center gap-4 bg-[#2A2A2A] p-4 rounded-lg">
+        <label
+          htmlFor="perspective-slider"
+          className="text-white text-sm font-medium"
+        >
+          Perspective:
+        </label>
+        <input
+          id="perspective-slider"
+          type="range"
+          min="50"
+          max="2000"
+          step="10"
+          value={perspective}
+          onChange={(e) => setPerspective(Number(e.target.value))}
+          className="w-64 h-2 bg-[#444444] rounded-lg appearance-none cursor-pointer"
+        />
+        <span className="text-white text-sm min-w-[4rem]">
+          {perspective}px
+        </span>
       </div>
     </main>
   );
