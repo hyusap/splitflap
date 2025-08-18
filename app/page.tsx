@@ -17,13 +17,13 @@ function SplitFlapHalf({
   return (
     <div
       className={cn(
-        "bg-[#222222] text-white h-12 w-16 overflow-hidden relative shadow-[0px_1px_0px_0px_rgba(0,0,0,0.25)]",
+        "bg-[#222222] text-white h-8 w-12 overflow-hidden relative shadow-[0px_1px_0px_0px_rgba(0,0,0,0.25)]",
         className
       )}
     >
       <div
-        className={`text-6xl font-bold h-24 w-16 flex items-center justify-center absolute ${
-          isTop ? "top-0" : "-top-12"
+        className={`text-4xl font-bold h-16 w-12 flex items-center justify-center absolute ${
+          isTop ? "top-0" : "-top-8"
         }`}
       >
         {letter}
@@ -285,9 +285,9 @@ export default function Home() {
   useEffect(() => {
     const calculateGrid = () => {
       // Reel dimensions including gap
-      const reelWidth = 80;
-      const reelHeight = 122;
-      const gap = 8;
+      const reelWidth = 60;
+      const reelHeight = 90;
+      const gap = 6;
       
       // Get viewport dimensions with some padding for the centered container
       const padding = 40; // Padding around the entire grid
@@ -344,8 +344,8 @@ export default function Home() {
       <div 
         className="grid gap-2"
         style={{
-          gridTemplateColumns: `repeat(${reelGrid.cols}, 80px)`,
-          gridTemplateRows: `repeat(${reelGrid.rows}, 122px)`,
+          gridTemplateColumns: `repeat(${reelGrid.cols}, 60px)`,
+          gridTemplateRows: `repeat(${reelGrid.rows}, 90px)`,
         }}
       >
         {reels.map((letter, i) => (
