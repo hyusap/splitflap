@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { cn } from "@/lib/utils";
-import { useState, useEffect, memo } from "react";
+import { useState, useEffect, memo, useCallback } from "react";
 
 interface SplitFlapHalfProps {
   letter: string;
@@ -180,22 +180,87 @@ interface ReelState {
 // Individual reel component that manages its own state
 const IndividualReel = memo(function IndividualReel({ 
   id, 
-  initialLetter = "A" 
+  targetLetter = "",
+  autoStart = false
 }: { 
   id: number; 
-  initialLetter?: string; 
+  targetLetter?: string;
+  autoStart?: boolean;
 }) {
-  const [currentLetter, setCurrentLetter] = useState(initialLetter);
-  const [nextLetter, setNextLetter] = useState("B");
+  const [currentLetter, setCurrentLetter] = useState(" ");
+  const [nextLetter, setNextLetter] = useState("A");
   const [isAnimating, setIsAnimating] = useState(false);
   const [animationProgress, setAnimationProgress] = useState(0);
   
-  const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
+  const letters = " ABCDEFGHIJKLMNOPQRSTUVWXYZ".split(""); // Start with space
   const perspective = 500;
+
+  // Auto-animate to target letter on mount
+  useEffect(() => {
+    if (!autoStart || !targetLetter || targetLetter === " " || isAnimating) return;
+
+    let animationId: number;
+    let timeoutId: NodeJS.Timeout;
+
+    const animateStep = (current: string, target: string) => {
+      if (current === target) return;
+
+      setIsAnimating(true);
+      setAnimationProgress(0);
+
+      const currentIndex = letters.indexOf(current);
+      const nextIndex = (currentIndex + 1) % letters.length;
+      const next = letters[nextIndex];
+      setNextLetter(next);
+
+      const startTime = Date.now();
+      const duration = 400;
+
+      const animate = () => {
+        const elapsed = Date.now() - startTime;
+        const progress = Math.min(elapsed / duration, 1) * 100;
+
+        setAnimationProgress(progress);
+
+        if (progress < 100) {
+          animationId = requestAnimationFrame(animate);
+        } else {
+          // Animation complete
+          setCurrentLetter(next);
+          setAnimationProgress(0);
+          
+          if (next === target) {
+            setIsAnimating(false);
+            return;
+          }
+          
+          // Continue to next letter
+          timeoutId = setTimeout(() => {
+            animateStep(next, target);
+          }, 100);
+        }
+      };
+
+      animationId = requestAnimationFrame(animate);
+    };
+
+    // Start animation with random delay
+    const delay = Math.random() * 2000;
+    const initialTimeout = setTimeout(() => {
+      animateStep(currentLetter, targetLetter);
+    }, delay);
+
+    return () => {
+      clearTimeout(initialTimeout);
+      if (animationId) cancelAnimationFrame(animationId);
+      if (timeoutId) clearTimeout(timeoutId);
+    };
+  }, [autoStart, targetLetter]); // Removed problematic dependencies
 
   const handleClick = () => {
     if (isAnimating) return;
 
+    // Manual click advances one letter at a time
     setIsAnimating(true);
     setAnimationProgress(0);
 
@@ -241,41 +306,13 @@ const IndividualReel = memo(function IndividualReel({
 });
 
 export default function Home() {
-  const [gridDimensions, setGridDimensions] = useState({ cols: 0, rows: 0 });
-  const [reelCount, setReelCount] = useState(0);
-
-  // Calculate grid dimensions based on screen size
-  useEffect(() => {
-    const calculateGrid = () => {
-      const reelWidth = 88;  // 80px + 8px gap
-      const reelHeight = 112; // 96px + 16px gap
-      const padding = 32;
-      
-      const cols = Math.floor((window.innerWidth - padding * 2) / reelWidth);
-      const rows = Math.floor((window.innerHeight - padding * 2) / reelHeight);
-      
-      setGridDimensions({ cols, rows });
-      setReelCount(cols * rows);
-    };
-
-    calculateGrid();
-    window.addEventListener('resize', calculateGrid);
-    return () => window.removeEventListener('resize', calculateGrid);
-  }, []);
-
   return (
     <main className="bg-[#181818] h-screen w-screen overflow-hidden flex items-center justify-center">
-      <div 
-        className="grid gap-x-2 gap-y-4"
-        style={{
-          gridTemplateColumns: `repeat(${gridDimensions.cols}, 80px)`,
-          gridTemplateRows: `repeat(${gridDimensions.rows}, 96px)`,
-        }}
-      >
-        {Array.from({ length: reelCount }, (_, i) => (
-          <IndividualReel key={i} id={i} initialLetter="A" />
-        ))}
-      </div>
+      <IndividualReel 
+        id={0} 
+        targetLetter="H"
+        autoStart={true}
+      />
     </main>
   );
 }
