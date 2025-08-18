@@ -192,7 +192,7 @@ const IndividualReel = memo(function IndividualReel({
   const [isAnimating, setIsAnimating] = useState(false);
   const [animationProgress, setAnimationProgress] = useState(0);
   
-  const letters = " ABCDEFGHIJKLMNOPQRSTUVWXYZ".split(""); // Start with space
+  const letters = " ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789".split(""); // Start with space, includes numbers
   const perspective = 500;
 
   // Auto-animate to target letter on mount
@@ -301,6 +301,63 @@ const IndividualReel = memo(function IndividualReel({
   );
 });
 
+// Layout engine types
+interface TextPlacement {
+  row: number;
+  col: number;
+  text: string;
+}
+
+interface RowContent {
+  left?: string;
+  right?: string;
+}
+
+// Layout engine to convert row definitions to reel positions
+function createLayout(rows: RowContent[], cols: number): TextPlacement[] {
+  const placements: TextPlacement[] = [];
+  
+  rows.forEach((row, rowIndex) => {
+    // Place left-aligned text
+    if (row.left) {
+      row.left.split('').forEach((char, charIndex) => {
+        placements.push({
+          row: rowIndex,
+          col: charIndex,
+          text: char
+        });
+      });
+    }
+    
+    // Place right-aligned text
+    if (row.right) {
+      const rightChars = row.right.split('');
+      rightChars.forEach((char, charIndex) => {
+        placements.push({
+          row: rowIndex,
+          col: cols - rightChars.length + charIndex,
+          text: char
+        });
+      });
+    }
+  });
+  
+  return placements;
+}
+
+function applyLayout(placements: TextPlacement[], totalReels: number, cols: number): string[] {
+  const reels = new Array(totalReels).fill(" ");
+  
+  placements.forEach(placement => {
+    const index = placement.row * cols + placement.col;
+    if (index < totalReels) {
+      reels[index] = placement.text;
+    }
+  });
+  
+  return reels;
+}
+
 export default function Home() {
   const [reelGrid, setReelGrid] = useState<{ rows: number; cols: number; total: number }>({ 
     rows: 0, 
@@ -343,11 +400,27 @@ export default function Home() {
     return () => window.removeEventListener('resize', calculateGrid);
   }, []);
 
-  // Generate array of reels based on calculated grid
-  const reels = Array.from({ length: reelGrid.total }, (_, i) => {
-    const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
-    return letters[i % letters.length];
-  });
+  // Generate random times for the buses
+  const generateRandomTime = () => {
+    const minutes = Math.floor(Math.random() * 60);
+    if (minutes < 10) {
+      return `${minutes} MIN`;
+    } else {
+      return `${Math.floor(minutes / 10)}${minutes % 10}MIN`;
+    }
+  };
+
+  // Define the bus routes and their times
+  const busRoutes: RowContent[] = [
+    { left: "51B N", right: generateRandomTime() },
+    { left: "51B S", right: generateRandomTime() },
+    { left: "79  N", right: generateRandomTime() },
+    { left: "79  S", right: generateRandomTime() },
+  ];
+
+  // Create layout and apply it to generate reel values
+  const layoutPlacements = createLayout(busRoutes, reelGrid.cols);
+  const reels = applyLayout(layoutPlacements, reelGrid.total, reelGrid.cols);
   
   return (
     <main className="bg-[#181818] h-screen w-screen overflow-hidden flex items-center justify-center">
