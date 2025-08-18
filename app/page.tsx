@@ -302,12 +302,63 @@ const IndividualReel = memo(function IndividualReel({
 });
 
 export default function Home() {
-  const message = "HELLO WORLD";
+  const [reelGrid, setReelGrid] = useState<{ rows: number; cols: number; total: number }>({ 
+    rows: 0, 
+    cols: 0, 
+    total: 0 
+  });
+
+  useEffect(() => {
+    const calculateGrid = () => {
+      // Reel dimensions including gap
+      const reelWidth = 80;
+      const reelHeight = 122;
+      const gap = 8;
+      
+      // Get viewport dimensions with some padding for the centered container
+      const padding = 40; // Padding around the entire grid
+      const availableWidth = window.innerWidth - padding * 2;
+      const availableHeight = window.innerHeight - padding * 2;
+      
+      // Calculate how many reels fit horizontally
+      // First reel doesn't need left gap, so: width = reelWidth * n + gap * (n - 1)
+      // Solving: availableWidth = reelWidth * n + gap * (n - 1)
+      // availableWidth = n * (reelWidth + gap) - gap
+      // n = (availableWidth + gap) / (reelWidth + gap)
+      const cols = Math.floor((availableWidth + gap) / (reelWidth + gap));
+      
+      // Calculate how many reels fit vertically
+      const rows = Math.floor((availableHeight + gap) / (reelHeight + gap));
+      
+      setReelGrid({
+        rows: Math.max(1, rows),
+        cols: Math.max(1, cols),
+        total: Math.max(1, rows) * Math.max(1, cols)
+      });
+    };
+
+    calculateGrid();
+    window.addEventListener('resize', calculateGrid);
+    
+    return () => window.removeEventListener('resize', calculateGrid);
+  }, []);
+
+  // Generate array of reels based on calculated grid
+  const reels = Array.from({ length: reelGrid.total }, (_, i) => {
+    const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+    return letters[i % letters.length];
+  });
   
   return (
     <main className="bg-[#181818] h-screen w-screen overflow-hidden flex items-center justify-center">
-      <div className="flex gap-x-2">
-        {message.split("").map((letter, i) => (
+      <div 
+        className="grid gap-2"
+        style={{
+          gridTemplateColumns: `repeat(${reelGrid.cols}, 80px)`,
+          gridTemplateRows: `repeat(${reelGrid.rows}, 122px)`,
+        }}
+      >
+        {reels.map((letter, i) => (
           <IndividualReel 
             key={i}
             id={i} 
