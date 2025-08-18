@@ -1,8 +1,7 @@
 "use client";
 
-import Image from "next/image";
 import { cn } from "@/lib/utils";
-import { useState, useEffect, memo, useCallback } from "react";
+import { useState, useEffect, memo } from "react";
 
 interface SplitFlapHalfProps {
   letter: string;
@@ -130,60 +129,12 @@ const AnimatedSplitFlap = memo(function AnimatedSplitFlap({
   );
 });
 
-function SplitFlapTile({ letter = "A" }: { letter: string }) {
-  return (
-    <div className="bg-[#0E0E0E] p-2 pb-4 flex flex-col gap-0.5">
-      <SplitFlapHalf letter={letter} isTop={true} />
-
-      {/* Bottom half with layered cards behind it */}
-      <div className="relative">
-        {/* Background layers - only for bottom half */}
-        <div className="absolute top-2">
-          <SplitFlapHalf
-            letter={letter}
-            isTop={false}
-            className="bg-[#171717] shadow-none"
-          />
-        </div>
-        <div className="absolute top-1.5">
-          <SplitFlapHalf
-            letter={letter}
-            isTop={false}
-            className="bg-[#1B1B1B]"
-          />
-        </div>
-        <div className="absolute top-1">
-          <SplitFlapHalf
-            letter={letter}
-            isTop={false}
-            className="bg-[#1F1F1F]"
-          />
-        </div>
-
-        {/* Main bottom half */}
-        <div className="relative">
-          <SplitFlapHalf letter={letter} isTop={false} />
-        </div>
-      </div>
-    </div>
-  );
-}
-
-interface ReelState {
-  id: number;
-  currentLetter: string;
-  nextLetter: string;
-  isAnimating: boolean;
-  animationProgress: number;
-}
 
 // Individual reel component that manages its own state
 const IndividualReel = memo(function IndividualReel({ 
-  id, 
   targetLetter = "",
   autoStart = false
 }: { 
-  id: number; 
   targetLetter?: string;
   autoStart?: boolean;
 }) {
@@ -192,7 +143,7 @@ const IndividualReel = memo(function IndividualReel({
   const [isAnimating, setIsAnimating] = useState(false);
   const [animationProgress, setAnimationProgress] = useState(0);
   
-  const letters = " ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789".split(""); // Start with space, includes numbers
+  const letters = " ABCDEFGHIJKLMNOPQRSTUVWXYZ9876543210".split(""); // Start with space, numbers descending for countdowns
   const perspective = 500;
 
   // Auto-animate to target letter on mount
@@ -251,45 +202,11 @@ const IndividualReel = memo(function IndividualReel({
       if (animationId) cancelAnimationFrame(animationId);
       if (timeoutId) clearTimeout(timeoutId);
     };
-  }, [autoStart, targetLetter]); // Removed problematic dependencies
-
-  const handleClick = () => {
-    if (isAnimating) return;
-
-    // Manual click advances one letter at a time
-    setIsAnimating(true);
-    setAnimationProgress(0);
-
-    const startTime = Date.now();
-    const duration = 400;
-
-    const animate = () => {
-      const elapsed = Date.now() - startTime;
-      const progress = Math.min(elapsed / duration, 1) * 100;
-
-      setAnimationProgress(progress);
-
-      if (progress < 100) {
-        requestAnimationFrame(animate);
-      } else {
-        // Animation complete
-        const currentIndex = letters.indexOf(nextLetter);
-        const nextIndex = (currentIndex + 1) % letters.length;
-        
-        setCurrentLetter(nextLetter);
-        setNextLetter(letters[nextIndex]);
-        setIsAnimating(false);
-        setAnimationProgress(0);
-      }
-    };
-
-    requestAnimationFrame(animate);
-  };
+  }, [autoStart, targetLetter]);
 
   return (
     <div
-      onClick={handleClick}
-      className="cursor-pointer flex items-center justify-center"
+      className="flex items-center justify-center"
     >
       <AnimatedSplitFlap
         currentLetter={currentLetter}
@@ -434,7 +351,6 @@ export default function Home() {
         {reels.map((letter, i) => (
           <IndividualReel 
             key={i}
-            id={i} 
             targetLetter={letter}
             autoStart={true}
           />
