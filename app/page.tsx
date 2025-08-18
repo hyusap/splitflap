@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import { cn } from "@/lib/utils";
-import { useState } from "react";
+import { useState, useEffect, memo } from "react";
 
 interface SplitFlapHalfProps {
   letter: string;
@@ -33,7 +33,7 @@ function SplitFlapHalf({
   );
 }
 
-function AnimatedSplitFlap({
+const AnimatedSplitFlap = memo(function AnimatedSplitFlap({
   currentLetter = "A",
   nextLetter = "B",
   perspective = 100,
@@ -44,8 +44,11 @@ function AnimatedSplitFlap({
   perspective?: number;
   completion?: number;
 }) {
-  const easeInOutCubic = (t: number) => {
-    return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+  // Physics-based pendulum easing - matches real split-flap motion
+  const pendulumEase = (t: number) => {
+    // sin²(πt/2) gives natural pendulum motion from 0° to 90°
+    const sineValue = Math.sin((Math.PI * t) / 2);
+    return sineValue * sineValue;
   };
 
   return (
@@ -64,7 +67,7 @@ function AnimatedSplitFlap({
         {/* Rotating top half */}
         <div
           style={{
-            transform: `rotateX(${completion <= 50 ? easeInOutCubic(completion / 50) * -88 : -88}deg)`,
+            transform: `rotateX(${completion <= 50 ? pendulumEase(completion / 50) * -88 : -88}deg)`,
             transformOrigin: "bottom",
             transformStyle: "preserve-3d",
             opacity: completion >= 50 ? 0 : 1,
@@ -87,7 +90,7 @@ function AnimatedSplitFlap({
           <div
             className="absolute z-10"
             style={{
-              transform: `rotateX(${88 - easeInOutCubic((completion - 50) / 50) * 88}deg)`,
+              transform: `rotateX(${88 - pendulumEase((completion - 50) / 50) * 88}deg)`,
               transformOrigin: "top",
               transformStyle: "preserve-3d",
             }}
@@ -125,7 +128,7 @@ function AnimatedSplitFlap({
       </div>
     </div>
   );
-}
+});
 
 function SplitFlapTile({ letter = "A" }: { letter: string }) {
   return (
@@ -166,82 +169,112 @@ function SplitFlapTile({ letter = "A" }: { letter: string }) {
   );
 }
 
-export default function Home() {
-  const [currentLetter, setCurrentLetter] = useState("A");
+interface ReelState {
+  id: number;
+  currentLetter: string;
+  nextLetter: string;
+  isAnimating: boolean;
+  animationProgress: number;
+}
+
+// Individual reel component that manages its own state
+const IndividualReel = memo(function IndividualReel({ 
+  id, 
+  initialLetter = "A" 
+}: { 
+  id: number; 
+  initialLetter?: string; 
+}) {
+  const [currentLetter, setCurrentLetter] = useState(initialLetter);
   const [nextLetter, setNextLetter] = useState("B");
   const [isAnimating, setIsAnimating] = useState(false);
   const [animationProgress, setAnimationProgress] = useState(0);
-  const [perspective, setPerspective] = useState(1000);
-
+  
   const letters = "ABCDEFGHIJKLMNOPQRSTUVWXYZ".split("");
+  const perspective = 500;
 
   const handleClick = () => {
-    if (isAnimating) return; // Prevent clicks during animation
-    
+    if (isAnimating) return;
+
     setIsAnimating(true);
     setAnimationProgress(0);
-    
-    // Start animation
+
     const startTime = Date.now();
-    const duration = 800; // 800ms animation
-    
+    const duration = 400;
+
     const animate = () => {
       const elapsed = Date.now() - startTime;
       const progress = Math.min(elapsed / duration, 1) * 100;
-      
+
       setAnimationProgress(progress);
-      
+
       if (progress < 100) {
         requestAnimationFrame(animate);
       } else {
-        // Animation complete - update letters first, then reset animation
+        // Animation complete
         const currentIndex = letters.indexOf(nextLetter);
         const nextIndex = (currentIndex + 1) % letters.length;
         
         setCurrentLetter(nextLetter);
         setNextLetter(letters[nextIndex]);
-        setAnimationProgress(0);
         setIsAnimating(false);
+        setAnimationProgress(0);
       }
     };
-    
+
     requestAnimationFrame(animate);
   };
 
   return (
-    <main className="bg-[#181818] h-screen w-screen flex flex-col items-center justify-center gap-8">
-      <div className="flex items-center justify-center gap-2">
-        <SplitFlapTile letter="Z" />
-        <div onClick={handleClick} className="cursor-pointer">
-          <AnimatedSplitFlap
-            currentLetter={currentLetter}
-            nextLetter={nextLetter}
-            perspective={perspective}
-            completion={animationProgress}
-          />
-        </div>
-      </div>
+    <div
+      onClick={handleClick}
+      className="cursor-pointer flex items-center justify-center"
+    >
+      <AnimatedSplitFlap
+        currentLetter={currentLetter}
+        nextLetter={nextLetter}
+        perspective={perspective}
+        completion={animationProgress}
+      />
+    </div>
+  );
+});
 
-      <div className="flex items-center gap-4 bg-[#2A2A2A] p-4 rounded-lg">
-        <label
-          htmlFor="perspective-slider"
-          className="text-white text-sm font-medium"
-        >
-          Perspective:
-        </label>
-        <input
-          id="perspective-slider"
-          type="range"
-          min="50"
-          max="2000"
-          step="10"
-          value={perspective}
-          onChange={(e) => setPerspective(Number(e.target.value))}
-          className="w-64 h-2 bg-[#444444] rounded-lg appearance-none cursor-pointer"
-        />
-        <span className="text-white text-sm min-w-[4rem]">
-          {perspective}px
-        </span>
+export default function Home() {
+  const [gridDimensions, setGridDimensions] = useState({ cols: 0, rows: 0 });
+  const [reelCount, setReelCount] = useState(0);
+
+  // Calculate grid dimensions based on screen size
+  useEffect(() => {
+    const calculateGrid = () => {
+      const reelWidth = 88;  // 80px + 8px gap
+      const reelHeight = 112; // 96px + 16px gap
+      const padding = 32;
+      
+      const cols = Math.floor((window.innerWidth - padding * 2) / reelWidth);
+      const rows = Math.floor((window.innerHeight - padding * 2) / reelHeight);
+      
+      setGridDimensions({ cols, rows });
+      setReelCount(cols * rows);
+    };
+
+    calculateGrid();
+    window.addEventListener('resize', calculateGrid);
+    return () => window.removeEventListener('resize', calculateGrid);
+  }, []);
+
+  return (
+    <main className="bg-[#181818] h-screen w-screen overflow-hidden flex items-center justify-center">
+      <div 
+        className="grid gap-x-2 gap-y-4"
+        style={{
+          gridTemplateColumns: `repeat(${gridDimensions.cols}, 80px)`,
+          gridTemplateRows: `repeat(${gridDimensions.rows}, 96px)`,
+        }}
+      >
+        {Array.from({ length: reelCount }, (_, i) => (
+          <IndividualReel key={i} id={i} initialLetter="A" />
+        ))}
       </div>
     </main>
   );
