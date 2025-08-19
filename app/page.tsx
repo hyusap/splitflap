@@ -144,7 +144,7 @@ const IndividualReel = memo(function IndividualReel({
   const [animationProgress, setAnimationProgress] = useState(0);
   
   const letters = " ABCDEFGHIJKLMNOPQRSTUVWXYZ9876543210".split(""); // Start with space, numbers descending for countdowns
-  const perspective = 500;
+  const perspective = 100;
 
   // Auto-animate to target letter on mount
   useEffect(() => {
@@ -152,6 +152,7 @@ const IndividualReel = memo(function IndividualReel({
 
     let animationId: number;
     let timeoutId: NodeJS.Timeout;
+    let delayTimeoutId: NodeJS.Timeout;
 
     const animateStep = (current: string, target: string) => {
       if (current === target) return;
@@ -195,12 +196,16 @@ const IndividualReel = memo(function IndividualReel({
       animationId = requestAnimationFrame(animate);
     };
 
-    // Start animation immediately
-    animateStep(currentLetter, targetLetter);
+    // Add a small random delay before starting (0-500ms)
+    const randomDelay = Math.random() * 500;
+    delayTimeoutId = setTimeout(() => {
+      animateStep(currentLetter, targetLetter);
+    }, randomDelay);
 
     return () => {
       if (animationId) cancelAnimationFrame(animationId);
       if (timeoutId) clearTimeout(timeoutId);
+      if (delayTimeoutId) clearTimeout(delayTimeoutId);
     };
   }, [autoStart, targetLetter]);
 
@@ -333,6 +338,8 @@ export default function Home() {
     { left: "51B S", right: generateRandomTime() },
     { left: "79  N", right: generateRandomTime() },
     { left: "79  S", right: generateRandomTime() },
+    { left: "YEL W", right: generateRandomTime() },
+    { left: "RED S", right: generateRandomTime() },
   ];
 
   // Create layout and apply it to generate reel values
