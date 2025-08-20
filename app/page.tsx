@@ -280,12 +280,127 @@ function applyLayout(placements: TextPlacement[], totalReels: number, cols: numb
   return reels;
 }
 
+interface Arrival {
+  routeId: string;
+  directionId: number;
+  arrivalTime: number;
+  stopId: string;
+}
+
 export default function Home() {
   const [reelGrid, setReelGrid] = useState<{ rows: number; cols: number; total: number }>({ 
     rows: 0, 
     cols: 0, 
     total: 0 
   });
+  const [busRoutes, setBusRoutes] = useState<RowContent[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  // Fetch GTFS data
+  const fetchTransitData = async () => {
+    try {
+      const response = await fetch('/api/gtfs-rt');
+      if (!response.ok) return;
+      
+      const data = await response.json();
+      const now = Date.now() / 1000;
+      const arrivals: Arrival[] = [];
+      
+      // Extract arrivals for stops
+      data.entity?.forEach((entity: any) => {
+        if (entity.tripUpdate?.stopTimeUpdate) {
+          const routeId = entity.tripUpdate.trip?.routeId;
+          
+          // Routes at stop 51582
+          if (['51B', '22', '27'].includes(routeId)) {
+            entity.tripUpdate.stopTimeUpdate.forEach((stopUpdate: any) => {
+              if (stopUpdate.stopId === '51582') {
+                const arrivalTime = stopUpdate.arrival?.time || stopUpdate.departure?.time;
+                if (arrivalTime && arrivalTime > now) {
+                  arrivals.push({
+                    routeId,
+                    directionId: entity.tripUpdate.trip?.directionId || 0,
+                    arrivalTime,
+                    stopId: '51582'
+                  });
+                }
+              }
+            });
+          }
+          
+          // Route 36 at stops 58778 (North) and 54767 (South)
+          if (routeId === '36') {
+            entity.tripUpdate.stopTimeUpdate.forEach((stopUpdate: any) => {
+              if (stopUpdate.stopId === '58778' || stopUpdate.stopId === '54767') {
+                const arrivalTime = stopUpdate.arrival?.time || stopUpdate.departure?.time;
+                if (arrivalTime && arrivalTime > now) {
+                  arrivals.push({
+                    routeId,
+                    directionId: stopUpdate.stopId === '58778' ? 2 : 0, // North: 2, South: 0
+                    arrivalTime,
+                    stopId: stopUpdate.stopId
+                  });
+                }
+              }
+            });
+          }
+        }
+      });
+      
+      // Sort by arrival time
+      arrivals.sort((a, b) => a.arrivalTime - b.arrivalTime);
+      
+      // Format for display (take first 8 arrivals)
+      const routes: RowContent[] = arrivals.slice(0, 8).map(arrival => {
+        const minutes = Math.floor((arrival.arrivalTime - now) / 60);
+        
+        // Single character direction
+        let dir = '';
+        if (arrival.directionId === 0) {
+          dir = 'S';
+        } else if (arrival.directionId === 1 || arrival.directionId === 2) {
+          dir = 'N';  // Both 1 and 2 mean North based on your data
+        } else {
+          dir = arrival.directionId.toString();
+        }
+        
+        // Format route with direction
+        const routeWithDir = `${arrival.routeId.padEnd(3, ' ')} ${dir}`;
+        
+        // Format time
+        let timeStr = '';
+        if (minutes < 1) {
+          timeStr = 'NOW';
+        } else if (minutes < 10) {
+          timeStr = ` ${minutes} MIN`;  // Space before single digit for right alignment
+        } else if (minutes < 60) {
+          timeStr = `${minutes} MIN`;
+        } else {
+          const hours = Math.floor(minutes / 60);
+          const mins = minutes % 60;
+          timeStr = `${hours}H ${mins}M`;
+        }
+        
+        return {
+          left: routeWithDir,
+          right: timeStr
+        };
+      });
+      
+      setBusRoutes(routes);
+      setLoading(false);
+    } catch (error) {
+      console.error('Error fetching transit data:', error);
+      setLoading(false);
+    }
+  };
+
+  // Fetch data on mount and every 30 seconds
+  useEffect(() => {
+    fetchTransitData();
+    const interval = setInterval(fetchTransitData, 30000);
+    return () => clearInterval(interval);
+  }, []);
 
   useEffect(() => {
     const calculateGrid = () => {
@@ -321,26 +436,6 @@ export default function Home() {
     
     return () => window.removeEventListener('resize', calculateGrid);
   }, []);
-
-  // Generate random times for the buses
-  const generateRandomTime = () => {
-    const minutes = Math.floor(Math.random() * 60);
-    if (minutes < 10) {
-      return `${minutes} MIN`;
-    } else {
-      return `${Math.floor(minutes / 10)}${minutes % 10}MIN`;
-    }
-  };
-
-  // Define the bus routes and their times
-  const busRoutes: RowContent[] = [
-    { left: "51B N", right: generateRandomTime() },
-    { left: "51B S", right: generateRandomTime() },
-    { left: "79  N", right: generateRandomTime() },
-    { left: "79  S", right: generateRandomTime() },
-    { left: "YEL W", right: generateRandomTime() },
-    { left: "RED S", right: generateRandomTime() },
-  ];
 
   // Create layout and apply it to generate reel values
   const layoutPlacements = createLayout(busRoutes, reelGrid.cols);
