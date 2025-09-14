@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import GtfsRealtimeBindings from 'gtfs-realtime-bindings';
 
-const API_KEY = 'YOUR_API_KEY_HERE';
+const API_KEY = process.env.GTFS_API_KEY;
 const AGENCY = 'AC';
 const API_URL = `http://api.511.org/transit/tripupdates?api_key=${API_KEY}&agency=${AGENCY}`;
 
