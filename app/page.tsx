@@ -147,9 +147,15 @@ const IndividualReel = memo(function IndividualReel({
   const letters = " ABCDEFGHIJKLMNOPQRSTUVWXYZ9876543210".split(""); // Start with space, numbers descending for countdowns
   const perspective = 100;
 
-  // Auto-animate to target letter on mount
+  // Auto-animate to target letter when target changes
   useEffect(() => {
-    if (!autoStart || !targetLetter || targetLetter === " " || isAnimating) return;
+    if (!autoStart || !targetLetter) return;
+
+    // If target is space and current is also space, no need to animate
+    if (targetLetter === " " && currentLetter === " ") return;
+
+    // Stop any current animation
+    setIsAnimating(false);
 
     let animationId: number;
     let timeoutId: NodeJS.Timeout;
@@ -208,7 +214,7 @@ const IndividualReel = memo(function IndividualReel({
       if (timeoutId) clearTimeout(timeoutId);
       if (delayTimeoutId) clearTimeout(delayTimeoutId);
     };
-  }, [autoStart, targetLetter]);
+  }, [autoStart, targetLetter, currentLetter]);
 
   return (
     <div
