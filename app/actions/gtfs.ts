@@ -1,11 +1,12 @@
-import { NextResponse } from 'next/server';
+'use server';
+
 import GtfsRealtimeBindings from 'gtfs-realtime-bindings';
 
 const API_KEY = process.env.GTFS_API_KEY;
 const AGENCY = 'AC';
 const API_URL = `http://api.511.org/transit/tripupdates?api_key=${API_KEY}&agency=${AGENCY}`;
 
-export async function GET() {
+export async function fetchGtfsData() {
   try {
     const response = await fetch(API_URL, {
       headers: {
@@ -19,7 +20,7 @@ export async function GET() {
 
     const buffer = await response.arrayBuffer();
     const feed = GtfsRealtimeBindings.transit_realtime.FeedMessage.decode(new Uint8Array(buffer));
-    
+
     const feedJSON = GtfsRealtimeBindings.transit_realtime.FeedMessage.toObject(feed, {
       enums: String,
       longs: String,
@@ -30,12 +31,12 @@ export async function GET() {
       oneofs: true
     });
 
-    return NextResponse.json(feedJSON);
+    return { success: true, data: feedJSON };
   } catch (error) {
     console.error('Error fetching GTFS-RT data:', error);
-    return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Failed to fetch GTFS-RT data' },
-      { status: 500 }
-    );
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'Failed to fetch GTFS-RT data'
+    };
   }
 }

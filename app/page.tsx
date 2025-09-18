@@ -2,6 +2,7 @@
 
 import { cn } from "@/lib/utils";
 import { useState, useEffect, memo } from "react";
+import { fetchGtfsData } from "./actions/gtfs";
 
 interface SplitFlapHalfProps {
   letter: string;
@@ -299,10 +300,10 @@ export default function Home() {
   // Fetch GTFS data
   const fetchTransitData = async () => {
     try {
-      const response = await fetch('/api/gtfs-rt');
-      if (!response.ok) return;
-      
-      const data = await response.json();
+      const result = await fetchGtfsData();
+      if (!result.success || !result.data) return;
+
+      const data = result.data;
       const now = Date.now() / 1000;
       const arrivals: Arrival[] = [];
       
@@ -400,6 +401,15 @@ export default function Home() {
     fetchTransitData();
     const interval = setInterval(fetchTransitData, 30000);
     return () => clearInterval(interval);
+  }, []);
+
+  // Reload page every 15 minutes
+  useEffect(() => {
+    const reloadInterval = setInterval(() => {
+      window.location.reload();
+    }, 15 * 60 * 1000); // 15 minutes in milliseconds
+
+    return () => clearInterval(reloadInterval);
   }, []);
 
   useEffect(() => {
